@@ -1,0 +1,91 @@
+NAME
+    Devel::MemUsed - returns how much memory as allocated since the
+    Devel::MemUsed object construction
+
+SYNOPSIS
+        use Devel::MemUsed;
+        
+    my $memused = Devel::MemUsed->new();
+        my %h = ( map { $_ => 1 } (1..100) );
+        print "my hash allocated $memused bytes of memory\n";
+        # for me 15632
+        
+    $memused->reset;
+        
+    my %h = ( map { $_ => 1 } (1..1000) );
+        print "my hash allocated $memused bytes of memory\n";
+        # for me 128104
+
+DESCRIPTION
+    The purpose of this module is to see how much more memory is allocated
+    after some lines of code that were executed. How much memory a huge hash
+    takes or an eval of a "foreign" code.
+
+    Second purpose was to try Devel::Mallinfo and Contextual::Return.
+    Devel::Mallinfo returns a hash filled with a "mallinfo" struct. This
+    struct is defined in malloc.h and looks like this:
+
+        struct mallinfo {
+          int arena;    /* non-mmapped space allocated from system */
+          int ordblks;  /* number of free chunks */
+          int smblks;   /* number of fastbin blocks */
+          int hblks;    /* number of mmapped regions */
+          int hblkhd;   /* space in mmapped regions */
+          int usmblks;  /* maximum total allocated space */
+          int fsmblks;  /* space available in freed fastbin blocks */
+          int uordblks; /* total allocated space */
+          int fordblks; /* total free space */
+          int keepcost; /* top-most, releasable (via malloc_trim) space */
+        };
+
+    While writing the tests I have discovered two strange thinks.
+
+    1st is that:
+
+        my $x1 = "x" x (100*1024);           # this one takes >200kB of memory ?!?!?
+        my $x2 = eval '"x" x (100*1024)';    # this one just   ~100kB
+
+    2nd is that ""x" x 128*1024" is a magic border when "hblkhd" start to
+    increase. To get some meaning full results of memory usage I had to add
+    "uordblks + hblkhd" together to get total memory usage. What is the real
+    meaning of "hblkhd" and how it works with memory allocation of huge
+    strings is unclear to me. If you know some details or explanation I'll
+    be more then happy to hear it.
+
+    On YAPC Europe 2008 Darko Obradovic showed a code snipped using
+    Devel::Mallinfo and a function "mallinfo" to get the statistics of
+    memory allocated using "malloc". On this same conference Damian Conway
+    in his keynote was showing Contextual::Return. I put those two together
+    and play around, hopefully producing something useful. :-)
+
+PROPERTIES
+METHODS
+  new()
+    Object constructor.
+
+  used()
+    Returns how many bytes of memory is used.
+
+  reset()
+    Reset the "counter" and start to count the memory allocated from the
+    line of code where the "reset()" was called.
+
+  allocated_memory()
+    Return total number of "mmap" allocated memory since the start of the
+    program.
+
+THANKS TO
+    Darko Obradovic for his talk about <http://www.cosair.com>.
+
+    and
+
+    Damian Conway for his YAPC Europe 2008 keynote + the hack number #92 in
+    "Perl Hacks" book where I first read about Contextual::Return.
+
+AUTHOR
+    Jozef Kutej
+
+LICENSE
+    This library is free software; you can redistribute it and/or modify it
+    under the same terms as Perl itself.
+
